@@ -1,5 +1,4 @@
 ### 编译运行
-- [github地址](https://github.com/Scyrc/rust-physical)
     ```bash
     cargo build
     cargo run
