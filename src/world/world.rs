@@ -4,19 +4,29 @@ use crate::ui::event::MyEvent;
 use bevy::math::vec3;
 use bevy::prelude::*;
 use rand::Rng;
-
+use std::thread;
+use std::time::Duration;
 pub struct WorldPlugin;
 
 #[derive(Resource)]
 pub struct Setting{
     pub wind: Vec3,
     pub pause:bool,
+    pub mass_factor:f32,
+    pub start_up_time:f32,
+    pub b_init:bool,
+    pub scene_id:usize,
+
 }
 impl Default for Setting {
     fn default() -> Self {
         Setting{
             wind: vec3(-8.0, 0.0, -8.0),
             pause: false,
+            mass_factor: 1.0,
+            start_up_time: 0.0,
+            b_init: false,
+            scene_id: 0,
         }
     }
 }
@@ -25,6 +35,7 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init_world)
             .insert_resource(Setting::default()) // 插入资源
+            .add_systems(FixedPreUpdate, pre_tick)
             .add_systems(FixedUpdate, tick)
             .add_systems(FixedPostUpdate, show)
             .add_event::<MyEvent>()
@@ -47,22 +58,31 @@ fn handle_event(mut event_reader: EventReader<MyEvent>,
 
     for event in event_reader.read(){
         let msg =  event.message.clone();
+        let mut mass_count = 0;
         match msg.as_str() {
             "scene1" => {
                 clear_scene(&mut commands,  &mut meshes, &mut materials,&mut query);
                 setting.wind = vec3(-8.0, 0.0, 8.0);
+                setting.scene_id = 0;
                 scene_base(&mut commands, &mut meshes, &mut materials, &mut query1);
             }
             "scene2" => {
                 clear_scene(&mut commands,  &mut meshes, &mut materials, &mut query);
                 setting.wind = vec3(-8.0, 0.0, -8.0);
+                setting.scene_id = 1;
                 scene_chain(&mut commands, &mut meshes, &mut materials, &mut query1);
             }
             "scene3" => {
                 clear_scene(&mut commands,  &mut meshes, &mut materials, &mut query);
+                setting.scene_id = 2;
                 setting.wind = vec3(0.0, 0.0, 8.0);
-
                 scene_chain_timer(&mut commands, &mut meshes, &mut materials, &mut query1, &time);
+            }
+            "mass+" => {
+                mass_count += 1;
+            }
+            "mass-" => {
+                mass_count -= 1;
             }
             "pause" => {
                 setting.pause = !setting.pause;
@@ -86,6 +106,10 @@ fn handle_event(mut event_reader: EventReader<MyEvent>,
                 setting.wind.y -= wind_factor;
             }
             _ => {}
+        }
+
+        if mass_count != 0 {
+            setting.mass_factor *= 1.01_f32.powi(mass_count);
         }
     }
 }
@@ -137,13 +161,22 @@ fn clear_scene(commands: &mut Commands, // 用于操作实体
 
 }
 
-fn init_world(mut event_writer: EventWriter<MyEvent>, ) {
+fn init_world(mut event_writer: EventWriter<MyEvent>) {
     let new_event = MyEvent {
-        message: "scene2".to_string(),
+        message: "scene1".to_string(),
     };
     event_writer.send(new_event);
 }
 
+// fn init_scene(mut event_writer: EventWriter<MyEvent>, time: Res<Time>, mut setting: ResMut<Setting>) {
+//     if setting.b_init == false {
+//         if time.elapsed_seconds() - setting.start_up_time > 2.0 {
+//             setting.b_init = true;
+//
+//         }
+//     }
+//
+// }
 fn scene_base(mut commands: &mut Commands,
            mut meshes:  &mut ResMut<Assets<Mesh>>,
            mut materials:  &mut ResMut<Assets<StandardMaterial>>,
@@ -228,7 +261,7 @@ fn scene_chain(mut commands: &mut Commands,
         let length = (prev_y - box_pos.y - prev_size * 0.5 - box_size.y * 0.5).abs() * 1.2;
         //println!("length: {} ", length);
 
-        add_distance_joint_new(&mut commands, entity, prev_box, box_size.y, prev_size, length, _level, box_pos.y ,&mut query);
+        add_distance_joint_new(&mut commands, &mut meshes, &mut materials, entity, prev_box, box_size.y, prev_size, length, _level, box_pos.y ,&mut query);
 
         prev_box = Some(entity);
         prev_size = box_size.y;
@@ -264,7 +297,7 @@ fn scene_chain_timer(mut commands: &mut Commands,
         let length = (box_pos.x - prev_x  - prev_size * 0.5 - box_size.x * 0.5).abs() * 1.2;
         //println!("length: {} ", length);
 
-        add_distance_joint_new1(&mut commands, entity, prev_box, box_size.x, prev_size, length,&mut query);
+        add_distance_joint_timer(&mut commands, entity, prev_box, box_size.x, prev_size, length, &mut query);
 
         prev_box = entity;
         prev_size = box_size.x;
@@ -322,7 +355,7 @@ fn add_distance_joint(commands: &mut Commands,
 
 
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Circle::new(0.03)),
+        mesh: meshes.add(Circle::new(0.02)),
         material: materials.add(Color::srgb_u8(0, 255, 0)),
         transform: Transform::from_xyz(target_pos.x, target_pos.y, target_pos.z),
         ..default()
@@ -330,6 +363,8 @@ fn add_distance_joint(commands: &mut Commands,
 }
 
 fn add_distance_joint_new(commands: &mut Commands,
+                                    meshes: &mut ResMut<Assets<Mesh>>,
+                                    materials: &mut ResMut<Assets<StandardMaterial>>,
                                     body: Entity,
                                     body1: Option<Entity>,
                                     box_size: f32,
@@ -353,19 +388,28 @@ fn add_distance_joint_new(commands: &mut Commands,
                                                  0.001,
                                                  true, query);
 
-
-    commands.spawn(PbrBundle {
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        ..default()
-    }).insert(joint_body);
+    if body1 == None{
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Circle::new(0.02)),
+            material: materials.add(Color::srgb_u8(0, 255, 0)),
+            transform: Transform::from_xyz(prev_pos.x, prev_pos.y, prev_pos.z),
+            ..default()
+        }).insert(joint_body);
+    }
+    else {
+        commands.spawn(PbrBundle {
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            ..default()
+        }).insert(joint_body);
+    }
 }
-fn add_distance_joint_new1(commands: &mut Commands,
-                          body: Entity,
-                          body1:Entity,
-                          box_size: f32,
-                           prev_size: f32,
-                          dis: f32,
-                          query: &mut Query<(&mut CuboidBody, &mut Transform)>,
+fn add_distance_joint_timer(commands: &mut Commands,
+                            body: Entity,
+                            body1:Entity,
+                            box_size: f32,
+                            prev_size: f32,
+                            dis: f32,
+                            query: &mut Query<(&mut CuboidBody, &mut Transform)>,
 
 )
 {
@@ -390,12 +434,9 @@ fn tick(
     time: Res<Time>,
     setting: ResMut<Setting>,
     mut query: Query<(Entity, &mut CuboidBody, &mut Transform)>,
-    mut joint_query: Query<&mut DistanceConstraint>
+    mut joint_query: Query<&mut DistanceConstraint>,
 ) {
-    if setting.pause == true {return; }
-    for (_entity, mut cuboid_body,   _transform )in query.iter_mut() {
-        cuboid_body.ready_sleep(time.elapsed_seconds());
-    }
+    if setting.pause{return;}
     let delta_time = time.delta_seconds();
     let num_sub_steps = 8;
     let mut s_dt = delta_time / num_sub_steps as f32;
@@ -403,7 +444,7 @@ fn tick(
     let g = vec3(0.0, -9.80, 0.0) + setting.wind;
     for _i in 0..num_sub_steps {
 
-        for (_entity, mut cuboid_body,  _transform )in query.iter_mut() {
+        for (_entity, mut cuboid_body,  _transform)in query.iter_mut() {
             cuboid_body.step(s_dt, g);
         }
 
@@ -411,7 +452,7 @@ fn tick(
             distance_joint.solve(&mut query);
         }
 
-        for (_entity, mut cuboid_body,  _transform )in query.iter_mut() {
+        for (_entity, mut cuboid_body,  _transform,)in query.iter_mut() {
             cuboid_body.update_vel(s_dt);
         }
     }
@@ -419,19 +460,33 @@ fn tick(
 
 
 }
-
-fn show(
-    mut gizmos: Gizmos,
-    mut query: Query<(Entity, &mut CuboidBody, &mut Transform)>,
-    mut joint_query: Query<&mut DistanceConstraint>
-) {
-    for mut distance_joint in joint_query.iter_mut() {
-        distance_joint.show_line(&mut gizmos);
+fn pre_tick(
+    setting: ResMut<Setting>,
+    mut query: Query<(&mut CuboidBody)>,
+)
+{
+    for (mut cuboid_body)in query.iter_mut() {
+        cuboid_body.set_mass(setting.mass_factor);
     }
-
-    for (_entity, mut cuboid_body,  mut transform )in query.iter_mut() {
+}
+fn show(
+    time: Res<Time>,
+    mut gizmos: Gizmos,
+    mut query: Query<(Entity, &mut CuboidBody, &mut Transform, &mut Handle<StandardMaterial>)>,
+    mut joint_query: Query<&mut DistanceConstraint>,
+    mut materials:  ResMut<Assets<StandardMaterial>>,
+) {
+    for (_entity, mut cuboid_body,  mut transform , mut _m)in query.iter_mut() {
+        if(cuboid_body.ready_sleep(time.elapsed_seconds()))
+        {
+            *_m = materials.add(Color::srgb(0.0, 1.0, 0.0));
+        }
         transform.translation = cuboid_body.get_position();
         transform.rotation  = cuboid_body.get_quat();
+    }
+
+    for mut distance_joint in joint_query.iter_mut() {
+        distance_joint.show_line(&mut gizmos);
     }
 
 }

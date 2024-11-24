@@ -38,10 +38,10 @@ fn camera_movement(
         if keyboard_input.pressed(KeyCode::KeyD) {
             direction.x += 1.0;
         }
-        if keyboard_input.pressed(KeyCode::Space) {
+        if keyboard_input.pressed(KeyCode::KeyQ) {
             direction.y += 1.0;
         }
-        if keyboard_input.pressed(KeyCode::ShiftLeft) {
+        if keyboard_input.pressed(KeyCode::KeyE) {
             direction.y -= 1.0;
         }
 

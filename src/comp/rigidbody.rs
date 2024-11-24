@@ -1,6 +1,7 @@
 use bevy::math::{vec3, EulerRot, Mat3, Quat, Vec3};
 use bevy::prelude::{Component, Mut};
 use std::ops::{Mul, Neg};
+use bevy::render::render_resource::ShaderType;
 
 pub trait Simulate {
     fn step(&mut self, dt: f32, acceleration: Vec3);
@@ -95,6 +96,7 @@ pub struct CuboidBody {
     z_size: f32,
     vertices: Vec<Vec3>,
     pub sleep_time:f32,
+    pub base_density: f32,
 }
 
 impl CuboidBody {
@@ -106,6 +108,7 @@ impl CuboidBody {
             z_size : size.z,
             vertices: vec![],
             sleep_time: 0.0,
+             base_density: density,
          };
         let mass = density * size.x * size.y * size.z;
         let inv_mass = 1.0 / mass;
@@ -134,12 +137,23 @@ impl CuboidBody {
         self.rigid_body.b_sleep = b_sleep;
     }
 
-    pub fn ready_sleep(&mut self, curr_time: f32){
+    pub fn ready_sleep(&mut self, curr_time: f32)->bool{
         if self.rigid_body.b_sleep == true{
             if curr_time - self.sleep_time > 0.35{
                 self.rigid_body.b_static = true;
+                return true
             }
         }
+        false
+    }
+    pub fn set_mass(&mut self, mass_factor: f32){
+        let new_mass = mass_factor *  self.base_density * self.x_size * self.y_size * self.z_size;
+        let new_inv_mass = 1.0 / new_mass;
+        let ix = 1.0 / 12.0 * new_mass * ( self.y_size*  self.y_size +  self.z_size *  self.z_size);
+        let iy = 1.0 / 12.0 * new_mass * ( self.x_size *  self.x_size +  self.z_size *  self.z_size);
+        let iz = 1.0 / 12.0 * new_mass * ( self.x_size *  self.x_size+  self.y_size *  self.y_size);
+        let new_inv_inertia =  Vec3::new(1.0 / ix, 1.0 / iy, 1.0 / iz);
+        self.rigid_body.init(new_mass, new_inv_mass, new_inv_inertia);
     }
 }
 impl Simulate for RigidBody{

@@ -16,7 +16,7 @@ impl Plugin for UIPlugin {
 }
 
 #[derive(Component)]
-struct FpsText;
+struct CustomText;
 
 // A unit struct to help identify the color-changing Text component
 #[derive(Component)]
@@ -24,15 +24,20 @@ pub(crate) struct ColorText;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
-    let tips_text = "press '1' to enter  base scene.\n\
-                          press '2' to enter chain scene1.\n\
-                          press '3' to enter chain scene2.\n\
-                          press 'p' to pause/unpause world.\n\
-                          press 'up,down' to change wind in z.\n\
-                          press 'left,right' to change wind in x.\n\
-                          press 'pageup,pagedown' to change wind in y.\n\
-                          press 'w,a,s,d,left_shift,space,mouse right button' to control camera.\n\
-                           ";
+    let tips_text = "press \n\
+    '1' to enter  base scene.\n\
+    '2' to enter chain scene.\n\
+    '3' to enter fall chain scene.\n\
+    'p' to pause/unpause world.\n\
+    ---------------------------------------\n\
+    press & hold\n\
+    'c'/'v' to increase/decrease density.\n\
+    'up,down' to change wind in z.\n\
+    'left,right' to change wind in x.\n\
+    'pageup,pagedown' to change wind in y.\n\
+    'w,a,s,d,q,e,mouse right button' to control camera.\n\
+    ";
+
     // UI camera
     commands.spawn(Camera2dBundle::default());
     // Text with one section
@@ -83,7 +88,33 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             right: Val::Px(5.0),
             ..default()
         }),
-        FpsText,
+        CustomText,
+    ));
+
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
+                "density factor:",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: 30.0,
+                    ..default()
+                }
+            ),
+            TextSection::from_style(
+                TextStyle {
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                    font_size: 30.0,
+                    color: GOLD.into(),
+                }
+            ),
+        ]).with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(35.0),
+            right: Val::Px(5.0),
+            ..default()
+        }),
+        CustomText,
     ));
 
     commands.spawn((
@@ -105,11 +136,30 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ),
         ]).with_style(Style {
             position_type: PositionType::Absolute,
-            top: Val::Px(35.0),
+            top: Val::Px(65.0),
             right: Val::Px(5.0),
             ..default()
         }),
-        FpsText,
+        CustomText,
+    ));
+
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
+                "scene",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: 30.0,
+                    color: Color::srgb_u8(0, 255, 0),
+                }
+            ),
+        ]).with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(45.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        CustomText
     ));
 
     commands.spawn((
@@ -146,7 +196,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn text_update_system(
     diagnostics: Res<DiagnosticsStore>,
-    mut query: Query<&mut Text, With<FpsText>>,
+    mut query: Query<&mut Text, With<CustomText>>,
     // mut query_wind: Query<&mut Text, With<WindText>>,
     setting: ResMut<Setting>,
 ) {
@@ -169,5 +219,23 @@ fn text_update_system(
             text.sections[1].value = format!("({x:.1}, {y:.1}, {z:.1})");
         }
 
+        else  if text.sections[0].value.starts_with("density")
+        {
+            let mass_factor = setting.mass_factor;
+            text.sections[1].value = format!("{mass_factor:.2}");
+        }
+
+        else  if text.sections[0].value.contains("scene")
+        {
+            let scene_id = setting.scene_id;
+            let mut scene_name = "";
+            match scene_id {
+                0 => { scene_name = "base scene."}
+                1 => { scene_name = "chain scene."}
+                2 => { scene_name = "fall chain scene."}
+                _ => {}
+            }
+            text.sections[0].value = scene_name.parse().unwrap();
+        }
     }
 }

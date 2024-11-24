@@ -39,6 +39,14 @@ fn handle_input(
     {
         new_event.message = "pause".parse().unwrap();
     }
+    else if keyboard_input.pressed(KeyCode::KeyC)
+    {
+        new_event.message = "mass+".parse().unwrap();
+    }
+    else if keyboard_input.pressed(KeyCode::KeyV)
+    {
+        new_event.message = "mass-".parse().unwrap();
+    }
     else if keyboard_input.pressed(KeyCode::ArrowUp)
     {
         new_event.message = "ArrowUp".parse().unwrap();
