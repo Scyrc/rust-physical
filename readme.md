@@ -1,7 +1,5 @@
 ### 编译运行
 - [github地址](https://github.com/Scyrc/rust-physical)
-- 直接运行： target\release\目录下的 rust.exe
-- 编译运行：
     ```bash
     cargo build
     cargo run
