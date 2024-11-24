@@ -3,6 +3,10 @@
 cargo build
 cargo run
 ```
+### 演示效果
+<video width="640" height="360" controls> <source src="./assets/video/demo.mp4" type="video/mp4"></video>
+
+
 ### 参考资料
 - [Rust语法](https://course.rs/basic/intro.html)
 - [bevy example](https://bevyengine.org/examples/)
