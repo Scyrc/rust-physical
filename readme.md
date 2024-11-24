@@ -6,8 +6,8 @@ cargo run
 ### 参考资料
 - [Rust语法](https://course.rs/basic/intro.html)
 - [bevy example](https://bevyengine.org/examples/)
-- [Basic Rigid Body Simulation](!https://matthias-research.github.io/pages/tenMinutePhysics/09-xpbd.pdf)
-- [XPBD](!https://matthias-research.github.io/pages/tenMinutePhysics/09-xpbd.pdf)
+- [Basic Rigid Body Simulation](https://matthias-research.github.io/pages/tenMinutePhysics/09-xpbd.pdf)
+- [XPBD](https://matthias-research.github.io/pages/tenMinutePhysics/09-xpbd.pdf)
 ## 数学物理理解
 - [无约束刚体模拟笔记](https://www.cnblogs.com/scyrc/p/16776824.html)
 ### 刚体模拟
