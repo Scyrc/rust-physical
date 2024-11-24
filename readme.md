@@ -1,8 +1,8 @@
 ### 编译运行
-    ```bash
-    cargo build
-    cargo run
-    ```
+```bash
+cargo build
+cargo run
+```
 ### 参考资料
 - [Rust语法](https://course.rs/basic/intro.html)
 - [bevy example](https://bevyengine.org/examples/)
